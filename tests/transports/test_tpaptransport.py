@@ -1856,7 +1856,7 @@ async def test_transport_decodes_credentials_hash_for_tpap_handshake() -> None:
 
     assert transport._credentials == Credentials("user", "pass")
     assert config.credentials == transport._credentials
-    assert session._get_candidate_secrets()[0] == "pass"
+    assert session._get_candidate_secrets() == ["pass"]
     await seed_transport.close()
     await transport.close()
 

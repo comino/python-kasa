@@ -337,28 +337,8 @@ class TpapEncryptionSession:
 
                 share_result = await self._login(share_params, step_name="pake_share")
                 self._establish_session_from_share_result(share_result)
-                _LOGGER.info(
-                    "TPAP: credential candidate %d/%d accepted by %s",
-                    attempt,
-                    candidate_count,
-                    self._transport._host,
-                )
                 return
-            except _RetryableError as exc:
-                # A rejected credential surfaces as STAT_ACCESS_ERROR; try the next one.
-                if (
-                    exc.error_code is not SmartErrorCode.STAT_ACCESS_ERROR
-                    or attempt == candidate_count
-                ):
-                    raise
-                last_error = exc
-                _LOGGER.info(
-                    "TPAP: credential candidate %d/%d rejected by %s",
-                    attempt,
-                    candidate_count,
-                    self._transport._host,
-                )
-            except _ConnectionError:
+            except (_RetryableError, _ConnectionError):
                 raise
             except KasaException as exc:
                 last_error = exc
@@ -700,18 +680,7 @@ class TpapEncryptionSession:
         creds = self._transport._config.credentials
         password = (creds.password if creds else "") or ""
         if not self._uses_camera_auth:
-            # Plugs on newer firmware reject sha1(password); try the other known derivations too.
-            return list(
-                dict.fromkeys(
-                    [
-                        password,
-                        self._md5_hex(password),
-                        self._sha256_hex_upper(password),
-                        self._sha256_hex_upper(password).lower(),
-                        base64.b64encode(password.encode()).decode(),
-                    ]
-                )
-            )
+            return [password]
         if passcode_type == "shared_token":
             return [self._md5_hex(password)]
         if 2 not in self._tpap_pake:
